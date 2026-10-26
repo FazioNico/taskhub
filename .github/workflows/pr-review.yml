@@ -1,0 +1,33 @@
+# Revue automatique des Pull Requests par Claude Code (section 11.3)
+# Secret requis : ANTHROPIC_API_KEY
+name: pr-review
+on:
+  pull_request:
+    types: [opened, synchronize]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install -g @anthropic-ai/claude-code
+      - name: Revue du diff
+        run: |
+          git diff origin/${{ github.base_ref }}...HEAD > diff.txt
+          claude -p "Relis diff.txt. Signale uniquement bugs, failles de sécurité et violations de CLAUDE.md, avec fichier et ligne. Format : liste markdown. Si rien à signaler, réponds RAS." \
+            --allowedTools "Read,Glob,Grep" > review.md
+        env:
+          ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+      - name: Commentaire sur la PR
+        run: gh pr comment ${{ github.event.pull_request.number }} --body-file review.md
+        env:
+          GH_TOKEN: ${{ github.token }}

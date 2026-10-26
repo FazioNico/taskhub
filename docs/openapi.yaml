@@ -1,0 +1,102 @@
+openapi: 3.1.0
+info:
+  title: TaskHub API
+  version: 1.0.0
+servers:
+  - url: http://localhost:3001
+paths:
+  /health:
+    get:
+      summary: État du service
+      responses:
+        "200":
+          description: OK
+  /tasks:
+    get:
+      summary: Liste des tâches
+      parameters:
+        - name: project
+          in: query
+          schema: { type: string }
+        - name: status
+          in: query
+          schema: { $ref: "#/components/schemas/TaskStatus" }
+      responses:
+        "200":
+          description: Liste des tâches
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/Error" }
+    post:
+      summary: Crée une tâche
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, project]
+              properties:
+                title: { type: string, minLength: 1, maxLength: 200 }
+                project: { type: string, minLength: 1 }
+                dueDate: { type: [string, "null"], pattern: "^\\d{4}-\\d{2}-\\d{2}$" }
+      responses:
+        "201":
+          description: Tâche créée
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "400": { $ref: "#/components/responses/Error" }
+  /tasks/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Une tâche
+      responses:
+        "200":
+          description: La tâche
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Task" }
+        "404": { $ref: "#/components/responses/Error" }
+    delete:
+      summary: Supprime une tâche
+      responses:
+        "204":
+          description: Supprimée
+        "404": { $ref: "#/components/responses/Error" }
+components:
+  schemas:
+    TaskStatus:
+      type: string
+      enum: [todo, in_progress, done]
+    Task:
+      type: object
+      required: [id, title, project, status, dueDate, createdAt]
+      properties:
+        id: { type: string }
+        title: { type: string }
+        project: { type: string }
+        status: { $ref: "#/components/schemas/TaskStatus" }
+        dueDate: { type: [string, "null"] }
+        createdAt: { type: string, format: date-time }
+    Error:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code: { type: string }
+            message: { type: string }
+  responses:
+    Error:
+      description: Erreur
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
